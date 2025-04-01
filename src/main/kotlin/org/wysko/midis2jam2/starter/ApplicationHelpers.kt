@@ -20,7 +20,8 @@ package org.wysko.midis2jam2.starter
 import com.jme3.app.SimpleApplication
 import com.jme3.system.AppSettings
 import org.wysko.midis2jam2.starter.configuration.*
-import java.awt.GraphicsEnvironment
+import org.lwjgl.glfw.GLFW
+import org.lwjgl.glfw.GLFWVidMode
 import java.io.File
 import javax.imageio.ImageIO
 
@@ -42,7 +43,10 @@ fun isMacOS(): Boolean = System.getProperty("os.name").contains("Mac", ignoreCas
 internal fun SimpleApplication.applyConfigurations(configurations: Collection<Configuration>) {
     setSettings(AppSettings(false).apply {
         copyFrom(DEFAULT_JME_SETTINGS)
-        applyResolution(configurations)
+        getCurrentVideoMode()?.let {
+            frequency = it.refreshRate()
+            applyResolution(it, configurations)
+        }
     })
     setDisplayStatView(false)
     setDisplayFps(false)
@@ -50,12 +54,12 @@ internal fun SimpleApplication.applyConfigurations(configurations: Collection<Co
     isShowSettings = false
 }
 
-private fun AppSettings.applyResolution(configurations: Collection<Configuration>) = when {
+private fun AppSettings.applyResolution(currentMode: GLFWVidMode, configurations: Collection<Configuration>) = when {
     configurations.find<SettingsConfiguration>().isFullscreen -> {
         isFullscreen = true
-        with(screenResolution()) {
-            this@applyResolution.width = width
-            this@applyResolution.height = height
+        with(currentMode) {
+            this@applyResolution.width = width()
+            this@applyResolution.height = height()
         }
     }
 
@@ -64,7 +68,7 @@ private fun AppSettings.applyResolution(configurations: Collection<Configuration
         with(configurations.find<GraphicsConfiguration>()) {
             when (windowResolution) {
                 is Resolution.DefaultResolution ->
-                    with(preferredResolution()) {
+                    with(preferredResolution(currentMode)) {
                         this@applyResolution.width = width
                         this@applyResolution.height = height
                     }
@@ -79,21 +83,13 @@ private fun AppSettings.applyResolution(configurations: Collection<Configuration
     }
 }
 
-internal fun screenResolution(): Resolution.CustomResolution =
-    with(GraphicsEnvironment.getLocalGraphicsEnvironment().defaultScreenDevice.displayMode) {
-        Resolution.CustomResolution(width, height)
-    }
-
-internal fun preferredResolution(): Resolution.CustomResolution =
-    with(screenResolution()) {
-        Resolution.CustomResolution((width * 0.95).toInt(), (height * 0.85).toInt())
+internal fun preferredResolution(currentMode: GLFWVidMode): Resolution.CustomResolution =
+    with(currentMode) {
+        Resolution.CustomResolution((width() * 0.95).toInt(), (height() * 0.85).toInt())
     }
 
 private val DEFAULT_JME_SETTINGS = AppSettings(true).apply {
     frameRate = -1
-    GraphicsEnvironment.getLocalGraphicsEnvironment().defaultScreenDevice.displayModes.firstOrNull()?.let {
-        frequency = it.refreshRate
-    }
     isVSync = true
     isResizable = false
     isGammaCorrection = false
@@ -106,4 +102,15 @@ private val DEFAULT_JME_SETTINGS = AppSettings(true).apply {
     title = "midis2jam2"
     audioRenderer = null
     centerWindow = true
+}
+
+
+internal fun getCurrentVideoMode(): GLFWVidMode? {
+    if (!GLFW.glfwInit()) {
+        throw Exception()
+    }
+    val monitor = GLFW.glfwGetPrimaryMonitor()
+    val mode = GLFW.glfwGetVideoMode(monitor)
+    GLFW.glfwTerminate()
+    return mode
 }
