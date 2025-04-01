@@ -21,7 +21,23 @@ import com.jme3.app.SimpleApplication
 import com.jme3.system.AppSettings
 import org.wysko.midis2jam2.starter.configuration.*
 import java.awt.GraphicsEnvironment
+import java.io.File
 import javax.imageio.ImageIO
+
+object AppArguments {
+    private lateinit var programArguments: Array<String>
+    fun init(args: Array<String>) {
+        if (::programArguments.isInitialized) {
+            throw Exception("Cannot init programArguments again")
+        }
+        programArguments = args
+    }
+    fun isRunningInApplicationMode(): Boolean = programArguments.isEmpty()
+    fun directFile(): File = File(programArguments.first())
+}
+
+fun isRunningInApplicationMode(): Boolean = AppArguments.isRunningInApplicationMode()
+fun isMacOS(): Boolean = System.getProperty("os.name").contains("Mac", ignoreCase = true)
 
 internal fun SimpleApplication.applyConfigurations(configurations: Collection<Configuration>) {
     setSettings(AppSettings(false).apply {
@@ -81,10 +97,12 @@ private val DEFAULT_JME_SETTINGS = AppSettings(true).apply {
     isVSync = true
     isResizable = false
     isGammaCorrection = false
-    icons =
-        arrayOf("/ico/icon16.png", "/ico/icon32.png", "/ico/icon128.png", "/ico/icon256.png").map {
-            ImageIO.read(this::class.java.getResource(it))
-        }.toTypedArray()
+    if (!isMacOS() || isRunningInApplicationMode()) {
+        icons =
+            arrayOf("/ico/icon16.png", "/ico/icon32.png", "/ico/icon128.png", "/ico/icon256.png").map {
+                ImageIO.read(this::class.java.getResource(it))
+            }.toTypedArray()
+    }
     title = "midis2jam2"
     audioRenderer = null
     centerWindow = true

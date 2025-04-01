@@ -58,8 +58,10 @@ import org.wysko.midis2jam2.gui.util.centerWindow
 import org.wysko.midis2jam2.gui.util.openHelp
 import org.wysko.midis2jam2.gui.viewmodel.*
 import org.wysko.midis2jam2.midi.search.MIDI_FILE_EXTENSIONS
+import org.wysko.midis2jam2.starter.AppArguments
 import org.wysko.midis2jam2.starter.Execution
 import org.wysko.midis2jam2.starter.configuration.*
+import org.wysko.midis2jam2.starter.isRunningInApplicationMode
 import org.wysko.midis2jam2.util.ErrorHandling
 import org.wysko.midis2jam2.util.ErrorHandling.errorDisp
 import org.wysko.midis2jam2.util.logger
@@ -75,6 +77,7 @@ import kotlin.system.exitProcess
  */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 suspend fun main(args: Array<String>) {
+    AppArguments.init(args)
     SplashScreen.writeMessage("Loading...")
 
     val homeViewModel = HomeViewModel.create()
@@ -88,7 +91,7 @@ suspend fun main(args: Array<String>) {
     val lyricsConfigurationViewModel = LyricsConfigurationViewModel.create()
     val midiDeviceViewModel = MidiDeviceViewModel.create()
 
-    if (args.isEmpty()) {
+    if (isRunningInApplicationMode()) {
         application {
             LaunchedEffect(Unit) {
                 UpdateChecker.checkForUpdates()
@@ -303,7 +306,7 @@ suspend fun main(args: Array<String>) {
             else -> Unit
         }
         Execution.start(
-            midiFile = File(args.first()),
+            midiFile = AppArguments.directFile(),
             configurations = listOf(
                 homeViewModel.generateConfiguration(),
                 settingsViewModel.generateConfiguration(),
