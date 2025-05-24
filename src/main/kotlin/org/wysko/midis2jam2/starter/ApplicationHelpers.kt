@@ -35,6 +35,7 @@ object AppArguments {
     }
     fun isRunningInApplicationMode(): Boolean = programArguments.isEmpty()
     fun directFile(): File = File(programArguments.first())
+    fun settingsFile(): File? = if (programArguments.size >= 2) File(programArguments[1]) else null
 }
 
 fun isRunningInApplicationMode(): Boolean = AppArguments.isRunningInApplicationMode()

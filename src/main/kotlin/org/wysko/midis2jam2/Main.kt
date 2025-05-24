@@ -44,6 +44,8 @@ import androidx.compose.ui.window.rememberWindowState
 import com.install4j.api.launcher.SplashScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import midis2jam2.generated.resources.Res
 import midis2jam2.generated.resources.midis2jam2_icon
 import org.jetbrains.compose.resources.painterResource
@@ -305,11 +307,22 @@ suspend fun main(args: Array<String>) {
 
             else -> Unit
         }
+        val settingsFile = AppArguments.settingsFile()
+        val settingsConfiguration: SettingsConfiguration = if (settingsFile?.exists() == true && settingsFile.readText().isNotBlank()) {
+                try {
+                    Json.decodeFromString<SettingsConfiguration>(settingsFile.readText())
+                } catch (e: Exception) {
+                    JOptionPane.showMessageDialog(null, "Settings file was invalid: " + e.message, "Error", JOptionPane.ERROR_MESSAGE)
+                    return
+                }
+            } else {
+                settingsViewModel.generateConfiguration()
+            }
         Execution.start(
             midiFile = AppArguments.directFile(),
             configurations = listOf(
                 homeViewModel.generateConfiguration(),
-                settingsViewModel.generateConfiguration(),
+                settingsConfiguration,
                 backgroundConfiguration,
                 graphicsConfigurationViewModel.generateConfiguration(),
                 soundBankConfigurationViewModel.generateConfiguration(),
