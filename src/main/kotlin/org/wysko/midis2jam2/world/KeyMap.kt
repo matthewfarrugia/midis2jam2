@@ -20,7 +20,6 @@ package org.wysko.midis2jam2.world
 import com.jme3.app.Application
 import com.jme3.input.KeyInput
 import com.jme3.input.controls.ActionListener
-import com.jme3.input.controls.KeyTrigger
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -33,7 +32,7 @@ import org.wysko.midis2jam2.util.Utils
  * @property key The key name, as defined in [KeyInput].
  */
 @Serializable
-data class KeyMap(val name: String, val key: String) {
+data class KeyMap(val name: String, val key: String, val multi: Int = MultiKeyPressHandler.NO_MULTI_PRESS) {
     companion object {
         /**
          * Registers key mappings for an application using the given listener.
@@ -45,11 +44,23 @@ data class KeyMap(val name: String, val key: String) {
             val keyMaps: Array<KeyMap> = Json.decodeFromString(Utils.resourceToString("/keymap.json"))
             val javaFields = KeyInput::class.java.declaredFields
 
-            keyMaps.forEach { (name, key) ->
+            keyMaps.forEach { (name, key, multi) ->
                 javaFields.firstOrNull { it.name == key }?.let { field ->
                     with(app.inputManager) {
-                        addMapping(name, KeyTrigger(field.getInt(KeyInput::class.java)))
-                        addListener(listener, name)
+                        val keyCode = field.getInt(KeyInput::class.java)
+                        MultiKeyPressHandler(
+                            this,
+                            name,
+                            keyCode,
+                            maxPresses = multi,
+                            controlKeyCodes = intArrayOf(KeyInput.KEY_C),
+                            pressAction = { multiPressCount, isPressed, tfp ->
+                                val cameraName = if (multi == MultiKeyPressHandler.NO_MULTI_PRESS || multiPressCount == 0) name else {
+                                        name + "_" + ('a' + (multiPressCount - 1)) // "cam1" + "_" + ("a"|"b"|"c"...)
+                                    }
+                                listener.onAction(cameraName, isPressed, tfp)
+                            }
+                        )
                     }
                 }
             }

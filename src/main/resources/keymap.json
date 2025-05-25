@@ -1,19 +1,23 @@
 [
 	{
 		"name": "cam1",
-		"key": "KEY_1"
+		"key": "KEY_1",
+		"multi": 3
 	},
 	{
 		"name": "cam2",
-		"key": "KEY_2"
+		"key": "KEY_2",
+		"multi": 2
 	},
 	{
 		"name": "cam3",
-		"key": "KEY_3"
+		"key": "KEY_3",
+		"multi": 2
 	},
 	{
 		"name": "cam4",
-		"key": "KEY_4"
+		"key": "KEY_4",
+		"multi": 2
 	},
 	{
 		"name": "cam5",
@@ -21,7 +25,8 @@
 	},
 	{
 		"name": "cam6",
-		"key": "KEY_6"
+		"key": "KEY_6",
+		"multi": 2
 	},
 	{
 		"name": "cam_reset",
