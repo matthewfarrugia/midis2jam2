@@ -29,10 +29,15 @@ import com.jme3.post.filters.FadeFilter
 import com.jme3.renderer.queue.RenderQueue
 import com.jme3.scene.Node
 import com.jme3.scene.Spatial
+import org.wysko.kmidi.midi.StandardMidiFile
 import org.wysko.kmidi.midi.TimeBasedSequence
+import org.wysko.kmidi.midi.event.ControlChangeEvent
+import org.wysko.kmidi.midi.event.Event
 import org.wysko.kmidi.midi.event.MetaEvent
+import org.wysko.kmidi.midi.event.NoteEvent
 import org.wysko.midis2jam2.instrument.Instrument
 import org.wysko.midis2jam2.instrument.algorithmic.Collector
+import org.wysko.midis2jam2.instrument.algorithmic.EventCollector
 import org.wysko.midis2jam2.instrument.algorithmic.InstrumentAssignment
 import org.wysko.midis2jam2.instrument.family.percussion.drumset.DrumSet
 import org.wysko.midis2jam2.instrument.family.percussion.drumset.DrumSetVisibilityManager
@@ -41,7 +46,9 @@ import org.wysko.midis2jam2.starter.configuration.GraphicsConfiguration
 import org.wysko.midis2jam2.starter.configuration.QualityScale
 import org.wysko.midis2jam2.starter.configuration.SettingsConfiguration
 import org.wysko.midis2jam2.starter.configuration.find
+import org.wysko.midis2jam2.starter.configuration.get
 import org.wysko.midis2jam2.util.Utils
+import org.wysko.midis2jam2.util.logger
 import org.wysko.midis2jam2.util.minusAssign
 import org.wysko.midis2jam2.util.plusAssign
 import org.wysko.midis2jam2.util.unaryPlus
@@ -54,6 +61,8 @@ import org.wysko.midis2jam2.world.camera.AutoCamController
 import org.wysko.midis2jam2.world.camera.CameraAngle
 import org.wysko.midis2jam2.world.camera.CameraSpeed
 import org.wysko.midis2jam2.world.camera.CameraState
+import org.wysko.midis2jam2.world.camera.EventCameraDirector
+import org.wysko.midis2jam2.world.camera.RandomCameraDirector
 import org.wysko.midis2jam2.world.camera.SlideCameraController
 import org.wysko.midis2jam2.world.camera.SmoothFlyByCamera
 import org.wysko.midis2jam2.world.lyric.LyricController
@@ -251,18 +260,19 @@ abstract class Midis2jam2(
             } else {
                 null
             }
-        this.autocamController = AutoCamController(this, settingsConfig.startAutocamWithSong)
+
+        val markers = sequence.smf.tracks.flatMap { it.markers }
+        val director = when (markers.isNotEmpty()) {
+            true -> {
+                EventCameraDirector(this, markers, sequence.smf.tracks.flatMap { it.controlChanges })
+            }
+            false -> RandomCameraDirector(this, settingsConfig.isClassicCamera)
+        }
+        this.autocamController = AutoCamController(this, director, settingsConfig.startAutocamWithSong)
+
         this.slideCamController = SlideCameraController(this)
         this.debugTextController = DebugTextController(this)
         this.hudController = HudController(this)
-        if (settingsConfig.startAutocamWithSong) {
-            with(this.app.camera) {
-                let {
-                    location = it.location
-                    rotation = it.rotation
-                }
-            }
-        }
         if (configs.find<GraphicsConfiguration>().shadowQuality == QualityScale.NONE) {
             fakeShadowsController = FakeShadowsController(this)
         }
@@ -382,4 +392,12 @@ abstract class Midis2jam2(
         super.stateDetached(stateManager)
         filterPostProcessor().removeFilter(fadeFilter)
     }
+}
+
+val StandardMidiFile.Track.markers: List<MetaEvent.Marker> get() {
+    return events.filterIsInstance<MetaEvent.Marker>()
+}
+
+val StandardMidiFile.Track.controlChanges: List<ControlChangeEvent> get() {
+    return events.filterIsInstance<ControlChangeEvent>()
 }

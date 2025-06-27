@@ -54,19 +54,28 @@ import org.wysko.midis2jam2.util.Utils
 import kotlin.math.pow
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
-import kotlin.time.DurationUnit
 
-/** The speed at which to transition from one camera angle to another. */
-private const val MOVE_SPEED = (1 / 3f)
+/** <camera angle, transition time> */
+typealias CameraChange = Pair<AutoCamPosition, Duration>
 
-/** The amount of time to wait before transitioning to the next camera angle. */
-private val WAIT_TIME = 3.seconds
+/** delegate to make camera angle changes */
+interface CameraDirector {
+    /** For the given tick, return next the camera angle and panning speed transition */
+    fun transitionForTick(time: Duration, delta: Duration, moving: Boolean): CameraChange?
+
+    /** External message to trigger a new camera position */
+    fun trigger(moving: Boolean)
+}
 
 /**
  * The auto-cam controller is responsible for controlling the automatic movement of the camera. It picks camera angles
  * randomly and moves the camera to them.
  */
-class AutoCamController(private val context: Midis2jam2, startEnabled: Boolean) {
+class AutoCamController(
+    private val context: Midis2jam2,
+    private val director: CameraDirector,
+    startEnabled: Boolean
+) {
 
     /** When true, the auto-cam controller is enabled. */
     var enabled: Boolean = startEnabled
@@ -78,17 +87,11 @@ class AutoCamController(private val context: Midis2jam2, startEnabled: Boolean) 
             field = value
         }
 
-    /** The amount of time that has passed since the last camera angle change. */
-    private var waiting = 0.seconds
-
     /** True if the camera is currently moving to a new angle, false otherwise. */
     private var moving = false
 
-    /** A list of previously used camera angles. */
-    val angles = mutableListOf(AutoCamPosition.GENERAL_A)
-
     /** The current amount of transition, from 0 to 1. */
-    private var x = 0f
+    private var transitionProgress = 0f
 
     /** The location at which the camera started at in this transition. */
     private var startLocation: Vector3f = AutoCamPosition.GENERAL_A.location.clone()
@@ -102,121 +105,58 @@ class AutoCamController(private val context: Midis2jam2, startEnabled: Boolean) 
     /** The rotation at which the camera started at in this transition. */
     var currentRotation: Quaternion = AutoCamPosition.GENERAL_A.rotation.clone()
 
+    var currentCameraTransition: CameraChange = Pair(AutoCamPosition.GENERAL_A, 0.seconds)
+
     /** Performs a tick of the auto-cam controller. */
     fun tick(time: Duration, delta: Duration): Boolean {
         if (!enabled) return false
 
-        /* If the camera is not moving, and the song has started, */
-        if (!moving && time > 0.seconds) {
-            /* Increment the waiting timer */
-            waiting += delta
+        /* Check the director for a new transition */
+        val transition = director.transitionForTick(time, delta, moving)
 
-            /* If the instrument dictates that it should no longer be focused on, */
-            if (!angles.last().stayHere(time, context.instruments, context)) {
-                /* Pick a new angle */
-                trigger()
-            }
+        if (transition != null && transition.first != currentCameraTransition.first) {
+            /* director has asked for a new angle */
+            moving = true
+            currentCameraTransition = transition
 
             /* Copy down the current location and rotation so that we can do some interpolation */
             startLocation = context.app.camera.location.clone()
             startRotation = context.app.camera.rotation.clone()
         }
 
-        /* If we have waited longer than the wait time, */
-        if (waiting >= WAIT_TIME) {
-            /* Reset the waiting timer */
-            waiting = Duration.ZERO
-
-            /* Pick a new camera angle */
-            angles.add(randomCamera(time))
-
-            /* We are now moving */
-            moving = true
-
-            /* About 1/5 of the time, do not interpolate and just move to the new angle (jump-cut) */
-            if (Math.random() < 0.2) {
-                x = 0.99f
-            }
-        }
+        val (currentAngle, transitionDuration) = currentCameraTransition
 
         /* If we are in the process of moving to a new camera angle, */
         if (moving) {
-            /* Increment interpolation index */
-            x += (delta.toDouble(DurationUnit.SECONDS) * MOVE_SPEED).toFloat()
-
-
-
-            /* If we have reached the end of the interpolation, */
-            if (x > 1f) {
-                /* Reset the interpolation index */
-                x = 0f
-
-                /* We are no longer moving */
-                moving = false
-
-                startLocation = context.app.camera.location.clone()
-                startRotation = context.app.camera.rotation.clone()
+            if (transitionDuration == 0.seconds) {
+                transitionProgress = 1f // jump cut
+            } else {
+                transitionProgress += (delta / transitionDuration).toFloat() // Increment interpolation index
             }
         }
 
         /* Set the camera location and rotation to the interpolated values */
-        cam.location = Vector3f().interpolateLocal(startLocation, angles.last().location, x.smooth()).also {
+        cam.location = Vector3f().interpolateLocal(startLocation, currentAngle.location, transitionProgress.smooth()).also {
             currentLocation = it
         }
-        cam.rotation = quaternionInterpolation(startRotation, angles.last().rotation, x.smooth()).also {
+        cam.rotation = quaternionInterpolation(startRotation, currentAngle.rotation, transitionProgress.smooth()).also {
             currentRotation = it
+        }
+
+        /* If we have reached the end of the interpolation, */
+        if (transitionProgress >= 1f) {
+            /* Reset the interpolation index */
+            transitionProgress = 0f
+
+            /* We are no longer moving */
+            moving = false
+
+            startLocation = context.app.camera.location.clone()
+            startRotation = context.app.camera.rotation.clone()
         }
 
         return true
     }
-
-    private fun randomCamera(time: Duration): AutoCamPosition {
-        /* If we are near the end of the song, */
-        if (context.sequence.duration - time < WAIT_TIME * 2.5) {
-            /* Pick GENERAL_A */
-            return AutoCamPosition.GENERAL_A
-        }
-
-        if (context.configs[SettingsConfiguration::class].isClassicCamera) {
-            return AutoCamPosition.values()
-                .filter { it.isClassicCamUsed && it != angles.last() && it.pickMe(time, context.instruments, context) }
-                .random()
-        }
-
-        /* About 1/4 of the time, pick a stage angle */
-        return if (Math.random() < 0.25) {
-            /* Collect all stage camera angles */
-            val stageCameras = AutoCamPosition.values().filter { it.type == AutoCamPositionType.STAGE }
-
-            /* Valid stage cameras are those that are not the current one (and not the overhead) */
-            val validStageCameras = stageCameras.filter { it != angles.last() && it != AutoCamPosition.GENERAL_D }
-
-            /* Pick a random valid stage camera */
-            validStageCameras.random()
-        } else {
-            /* Collect all valid instrument camera angles */
-            val validInstrumentCameras = AutoCamPosition.values()
-                .filter { it.type == AutoCamPositionType.INSTRUMENT && it.pickMe(time, context.instruments, context) }
-
-            /* Collect some the last used instrument camera angles */
-            val lastUsedInstrumentCameras = angles.filter { it.type == AutoCamPositionType.INSTRUMENT }
-                .takeLast((context.instruments.filter { it.isVisible }.size - 2).coerceAtLeast(1))
-
-            val notRecentlyUsedInstrumentAngles = validInstrumentCameras.minus(lastUsedInstrumentCameras.toSet())
-
-            /* If there are any valid camera angles that are not the last used ones, */
-            if (notRecentlyUsedInstrumentAngles.isNotEmpty()) {
-                /* Pick a random camera from that list */
-                notRecentlyUsedInstrumentAngles.random()
-            } else {
-                /* Otherwise, just pick the last used camera that has been the longest time since it was used */
-                angles.firstOrNull { it.type == AutoCamPositionType.INSTRUMENT && it.pickMe(time, context.instruments, context) }
-                    ?: AutoCamPosition.GENERAL_A
-            }
-        }
-    }
-
-
 
     /**
      * Applies cubic-ease-in-out interpolation to a value.
@@ -226,16 +166,12 @@ class AutoCamController(private val context: Midis2jam2, startEnabled: Boolean) 
         false -> if (this < 0.5) 4 * this.pow(3) else 1 - (-2 * this + 2).pow(3) / 2
     }
 
-    /** Moves the camera to a new position, if it is not currently moving. */
     fun trigger() {
         if (!enabled) {
-            x = 0f
+            transitionProgress = 0f
         }
         enabled = true
-
-        if (!moving) {
-            waiting = WAIT_TIME
-        }
+        director.trigger(moving)
     }
 
     /** The camera. */
@@ -260,6 +196,7 @@ enum class AutoCamPosition(
     val rotation: Quaternion,
     /** The type of camera. */
     val type: AutoCamPositionType,
+    /** The instrument the camera angle focuses on */
     val instrumentClass: Class<out Instrument>? = null,
     val isClassicCamUsed: Boolean = false,
 ) {
@@ -690,49 +627,6 @@ enum class AutoCamPosition(
         instrumentClass = BirdTweet::class.java,
     ),
 
-}
-
-/** The condition that must be met for the camera to be picked. */
-fun AutoCamPosition.pickMe(time: Duration, instruments: List<Instrument>, context: Midis2jam2): Boolean {
-    return when (instrumentClass) {
-        null -> true
-        DrumSet::class.java -> context.drumSetVisibilityManager.isVisible
-        StageStrings::class.java ->
-            instruments.filterIsInstance<StageStrings>().any { it.isVisible } && visibleNowAndLater(
-                instruments,
-                StageStrings::class.java,
-                time,
-                WAIT_TIME
-            )
-        else -> visibleNowAndLater(instruments, instrumentClass, time, WAIT_TIME * 1.5)
-    }
-}
-
-fun AutoCamPosition.stayHere(time: Duration, instruments: List<Instrument>, context: Midis2jam2): Boolean {
-    return when (instrumentClass) {
-        null -> true
-        DrumSet::class.java -> context.drumSetVisibilityManager.isVisible
-        else -> instruments.filterIsInstance(instrumentClass).any { it.isVisible }
-    }
-}
-
-/**
- * Determines if the given [instrument] class, given the list of [instruments], is visible at the given [time] and
- * visible [buffer] seconds after time.
- *
- * @param instruments the list of instruments
- * @param instrument the instrument class
- * @param time the current time
- * @param buffer the amount of time to look into the future and see if the instrument is visible
- * @return true if the instrument is visible at the given time and ahead by the buffer, false otherwise
- */
-fun visibleNowAndLater(
-    instruments: List<Instrument>,
-    instrument: Class<out Instrument>,
-    time: Duration,
-    buffer: Duration
-): Boolean = instruments.filterIsInstance(instrument).any {
-    it.isVisible && it.calculateVisibility(time + buffer, future = true)
 }
 
 /**

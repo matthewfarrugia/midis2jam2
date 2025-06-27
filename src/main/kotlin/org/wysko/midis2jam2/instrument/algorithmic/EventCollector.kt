@@ -27,7 +27,7 @@ import kotlin.time.Duration
 class EventCollector<T : Event>(
     private val context: Midis2jam2,
     private val events: List<T>,
-    private val triggerCondition: (Event, Duration) -> Boolean =
+    private val triggerCondition: (T, Duration) -> Boolean =
         { event, time -> context.sequence.getTimeOf(event) <= time },
     private val onSeek: (EventCollector<T>) -> Unit = {},
 ) : Collector<T> {

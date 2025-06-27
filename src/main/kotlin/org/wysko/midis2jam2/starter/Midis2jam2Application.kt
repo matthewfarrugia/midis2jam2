@@ -27,6 +27,8 @@ import com.jme3.shadow.EdgeFilteringMode
 import com.jme3.system.lwjgl.LwjglContext
 import org.wysko.kmidi.midi.TimeBasedSequence.Companion.toTimeBasedSequence
 import org.wysko.kmidi.midi.reader.StandardMidiFileReader
+import org.wysko.kmidi.midi.reader.StandardMidiFileReader.Policies
+import org.wysko.kmidi.midi.reader.StandardMidiFileReader.Policies.UnexpectedEndOfFileExceptionPolicy.AllowDirty
 import org.wysko.kmidi.midi.reader.readFile
 import org.wysko.midis2jam2.DesktopMidis2jam2
 import org.wysko.midis2jam2.starter.configuration.Configuration
