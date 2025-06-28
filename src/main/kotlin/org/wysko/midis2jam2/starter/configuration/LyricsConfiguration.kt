@@ -24,7 +24,8 @@ private val CONFIG_FILE = File(APPLICATION_CONFIG_HOME, "lyrics.json")
 
 @Serializable
 data class LyricsConfiguration(
-    val lyricSize: LyricSize
+    val lyricSize: LyricSize,
+    val lyricPosition: LyricPosition = LyricPosition.Top
 ) : Configuration {
     companion object {
         /**
@@ -49,4 +50,9 @@ data class LyricSize(val times: Float) {
             LyricSize(2.5f)
         )
     }
+}
+
+@Serializable
+enum class LyricPosition {
+    Top, Bottom
 }

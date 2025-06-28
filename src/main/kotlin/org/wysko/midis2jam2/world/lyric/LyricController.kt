@@ -25,8 +25,8 @@ import org.wysko.kmidi.midi.event.MetaEvent
 import org.wysko.midis2jam2.Midis2jam2
 import org.wysko.midis2jam2.instrument.algorithmic.EventCollector
 import org.wysko.midis2jam2.starter.configuration.LyricsConfiguration
+import org.wysko.midis2jam2.starter.configuration.LyricPosition
 import org.wysko.midis2jam2.starter.configuration.find
-import org.wysko.midis2jam2.starter.configuration.get
 import org.wysko.midis2jam2.util.NumberSmoother
 import org.wysko.midis2jam2.util.plusAssign
 import kotlin.math.abs
@@ -39,7 +39,7 @@ import kotlin.time.Duration.Companion.seconds
  * @property context The context to the main class.
  * @property events The list of the text events.
  */
-class LyricController(private val context: Midis2jam2, private val events: List<MetaEvent.Lyric>) {
+class LyricController(private val context: Midis2jam2, private val events: List<MetaEvent.Lyric>, private val position: LyricPosition) {
 
     private val font = context.assetManager.loadFont("Assets/Fonts/Inter.fnt")
 
@@ -73,7 +73,7 @@ class LyricController(private val context: Midis2jam2, private val events: List<
             setBox(
                 Rectangle(
                     0f,
-                    context.app.viewPort.camera.height * 0.85f,
+                    lyricYPosition(0.85f),
                     context.app.viewPort.camera.width.toFloat(),
                     100f
                 )
@@ -85,6 +85,15 @@ class LyricController(private val context: Midis2jam2, private val events: List<
         }
     }.onEach { context.app.guiNode += it.value }
     private val linePositionCtrl = lines.associateWith { NumberSmoother(0.8f, 10.0) }
+
+    private fun lyricYPosition(offset: Float): Float {
+        val screenOffset = context.app.viewPort.camera.height * offset
+        return when {
+            position == LyricPosition.Top -> screenOffset
+            position == LyricPosition.Bottom -> context.app.viewPort.camera.height - screenOffset
+            else -> screenOffset
+        }
+    }
 
     /**
      * Updates the controller.
@@ -114,7 +123,7 @@ class LyricController(private val context: Midis2jam2, private val events: List<
                     text.setBox(
                         Rectangle(
                             0f,
-                            context.app.viewPort.camera.height * it,
+                            lyricYPosition(it),
                             context.app.viewPort.camera.width.toFloat(),
                             100f
                         )

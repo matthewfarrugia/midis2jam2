@@ -19,8 +19,10 @@ package org.wysko.midis2jam2.gui.viewmodel
 
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import org.wysko.kmidi.midi.event.MetaEvent
 import org.wysko.midis2jam2.starter.configuration.LyricSize
 import org.wysko.midis2jam2.starter.configuration.LyricsConfiguration
+import org.wysko.midis2jam2.starter.configuration.LyricPosition
 
 /**
  * Represents a ViewModel for lyrics configuration.
@@ -35,10 +37,14 @@ class LyricsConfigurationViewModel(
 ) : ConfigurationViewModel<LyricsConfiguration> {
 
     private val _lyricSize = MutableStateFlow(LyricSize(1f))
+    private val _lyricPosition = MutableStateFlow(LyricPosition.Top)
 
     /** The resolution of the window. */
     val lyricSize: StateFlow<LyricSize>
         get() = _lyricSize
+
+    val lyricPosition: StateFlow<LyricPosition>
+        get() = _lyricPosition
 
     /**
      * Sets the lyric size.
@@ -50,14 +56,21 @@ class LyricsConfigurationViewModel(
         onConfigurationChanged(generateConfiguration())
     }
 
+    fun setLyricPosition(pos: LyricPosition) {
+        _lyricPosition.value = pos
+        onConfigurationChanged(generateConfiguration())
+    }
+
     override fun generateConfiguration(): LyricsConfiguration {
         return LyricsConfiguration(
-            lyricSize.value
+            lyricSize.value,
+            lyricPosition.value
         )
     }
 
     override fun applyConfiguration(configuration: LyricsConfiguration) {
         _lyricSize.value = configuration.lyricSize
+        _lyricPosition.value = configuration.lyricPosition
     }
 
     init {

@@ -32,6 +32,7 @@ import org.wysko.midis2jam2.gui.components.ExposedDropDownMenu
 import org.wysko.midis2jam2.gui.viewmodel.I18n
 import org.wysko.midis2jam2.gui.viewmodel.LyricsConfigurationViewModel
 import org.wysko.midis2jam2.starter.configuration.LyricSize
+import org.wysko.midis2jam2.starter.configuration.LyricPosition
 
 /**
  * The screen for configuring lyrics settings.
@@ -46,6 +47,7 @@ fun LyricsConfigurationScreen(
     onGoBack: () -> Unit,
 ) {
     val lyricSize by viewModel.lyricSize.collectAsState()
+    val lyricPosition by viewModel.lyricPosition.collectAsState()
 
     Scaffold(topBar = {
         TopAppBar(title = { Text(I18n["lyrics_configure"].value) }, navigationIcon = {
@@ -59,7 +61,7 @@ fun LyricsConfigurationScreen(
                 modifier = Modifier.verticalScroll(state = rememberScrollState()).padding(16.dp).fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                LyricsOptions(viewModel, lyricSize)
+                LyricsOptions(viewModel, lyricSize, lyricPosition)
             }
         }
     }
@@ -69,12 +71,19 @@ fun LyricsConfigurationScreen(
 private fun LyricsOptions(
     viewModel: LyricsConfigurationViewModel,
     lyricSize: LyricSize,
+    lyricPosition: LyricPosition
 ) {
     createDropDownMenu(
         title = I18n["lyrics_size"].value,
         items = LyricSize.OPTIONS,
         selectedItem = lyricSize,
     ) { viewModel.setLyricsSize(it) }
+
+    createDropDownMenu(
+        title = I18n["lyrics_position"].value,
+        items = LyricPosition.entries,
+        selectedItem = lyricPosition,
+    ) { viewModel.setLyricPosition(it) }
 }
 
 /**
