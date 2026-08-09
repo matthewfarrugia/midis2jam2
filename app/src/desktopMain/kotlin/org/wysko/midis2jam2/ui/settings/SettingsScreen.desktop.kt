@@ -168,7 +168,7 @@ internal actual fun LazyListScope.SettingsScreenContent(
     model: SettingsModel,
     screenModel: SettingsScreenModel,
 ) {
-    item { // stickyHeader
+    stickyHeader { // stickyHeader
         CategoryHeader(stringResource(Res.string.settings_general))
     }
     item {
@@ -184,7 +184,7 @@ internal actual fun LazyListScope.SettingsScreenContent(
     item {
         CheckForUpdates()
     }
-    item { // stickyHeader
+    stickyHeader { // stickyHeader
         CategoryHeader(stringResource(Res.string.settings_graphics))
     }
     windowSettings(settings, model)
@@ -201,20 +201,20 @@ internal actual fun LazyListScope.SettingsScreenContent(
         val bgWarning = computeBackgroundWarning(bg)
         BackgroundSelect(settings, model, bgWarning)
     }
-    item { // stickyHeader
+    stickyHeader { // stickyHeader
         CategoryHeader(stringResource(Res.string.settings_on_screen_elements))
     }
     LyricsSelect(settings, model)
     item {
         HudBooleanSelect(settings, model)
     }
-    item { // stickyHeader
+    stickyHeader { // stickyHeader
         CategoryHeader(stringResource(Res.string.settings_instruments))
     }
     item {
         AlwaysShowInstrumentsBooleanSelect(settings, model)
     }
-    item { // stickyHeader
+    stickyHeader { // stickyHeader
         CategoryHeader(stringResource(Res.string.settings_controls))
     }
     item {
@@ -223,7 +223,7 @@ internal actual fun LazyListScope.SettingsScreenContent(
     item {
         IsSpeedModifierKeysStickyBooleanSelect(settings, model)
     }
-    item { // stickyHeader
+    stickyHeader { // stickyHeader
         CategoryHeader(stringResource(Res.string.settings_playback_synthesizer))
     }
     item {
@@ -235,13 +235,13 @@ internal actual fun LazyListScope.SettingsScreenContent(
     item {
         SynthesizerChorusSelect(settings, model)
     }
-    item { // stickyHeader
+    stickyHeader { // stickyHeader
         CategoryHeader(stringResource(Res.string.midi_device))
     }
     item {
         SpecificationResetSelect(settings, model)
     }
-    item { // stickyHeader
+    stickyHeader { // stickyHeader
         CategoryHeader(stringResource(Res.string.settings_camera))
     }
     item {
