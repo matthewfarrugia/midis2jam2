@@ -21,4 +21,6 @@ actual class PlaybackHistoryPersistor {
     actual fun save(entries: List<PlaybackHistoryEntry>) = Unit
 
     actual fun load(): List<PlaybackHistoryEntry> = emptyList()
+
+    actual fun getDataString(entries: List<PlaybackHistoryEntry>): String = ""
 }

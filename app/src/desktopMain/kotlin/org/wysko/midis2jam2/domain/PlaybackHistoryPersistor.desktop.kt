@@ -32,13 +32,10 @@ actual class PlaybackHistoryPersistor {
     }
 
     actual fun save(entries: List<PlaybackHistoryEntry>) {
-        val normalized = entries
-            .sortedByDescending { it.playedAtEpochMillis }
-            .distinctBy { it.filePath }
-            .take(MAX_PLAYBACK_HISTORY_ENTRIES)
+        val dataString = getDataString(entries)
         preferences.putString(
             PLAYBACK_HISTORY_KEY,
-            json.encodeToString(ListSerializer(PlaybackHistoryEntry.serializer()), normalized)
+            dataString
         )
     }
 
@@ -50,5 +47,13 @@ actual class PlaybackHistoryPersistor {
                 .distinctBy { it.filePath }
                 .take(MAX_PLAYBACK_HISTORY_ENTRIES)
         }.getOrDefault(emptyList())
+    }
+
+    actual fun getDataString(entries: List<PlaybackHistoryEntry>): String {
+        val normalized = entries
+            .sortedByDescending { it.playedAtEpochMillis }
+            .distinctBy { it.filePath }
+            .take(MAX_PLAYBACK_HISTORY_ENTRIES)
+        return json.encodeToString(ListSerializer(PlaybackHistoryEntry.serializer()), normalized)
     }
 }

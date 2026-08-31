@@ -31,4 +31,5 @@ data class PlaybackHistoryEntry(
 expect class PlaybackHistoryPersistor() {
     fun save(entries: List<PlaybackHistoryEntry>)
     fun load(): List<PlaybackHistoryEntry>
+    fun getDataString(entries: List<PlaybackHistoryEntry>): String
 }
