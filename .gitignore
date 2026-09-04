@@ -1,6 +1,8 @@
 .classpath
 .netlify
 .project
+.kotlin
+.DS_Store
 /.gradle/
 /.idea/.name
 /.idea/artifacts/
@@ -38,3 +40,5 @@ app/src/commonMain/resources/*
 app/src/androidMain/assets/*
 app/src/commonMain/composeResources/values/build.xml
 app/src/commonMain/composeResources/files/THIRD-PARTY-NOTICES.txt
+hs_err_pid*.log
+replay_pid*.log
