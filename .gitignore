@@ -2,6 +2,7 @@
 .netlify
 .project
 .kotlin
+.DS_Store
 /.gradle/
 /.idea/.name
 /.idea/artifacts/
