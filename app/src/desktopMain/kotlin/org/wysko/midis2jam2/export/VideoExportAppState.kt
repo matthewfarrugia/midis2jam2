@@ -26,6 +26,7 @@ import org.wysko.midis2jam2.util.logger
 import java.io.File
 
 internal class VideoExportAppState(
+    private val audioFile: File,
     private val settings: ExportSettings,
     private val totalFrames: Int,
     private val onProgress: (frame: Int, total: Int) -> Unit = { _, _ -> },
@@ -47,7 +48,7 @@ internal class VideoExportAppState(
         processor = VideoCaptureProcessor(
             sink = { renderWidth, renderHeight ->
                 FfmpegSink(
-                    outputFile, renderWidth, renderHeight, settings.framesPerSecond
+                    outputFile, renderWidth, renderHeight, audioFile, framesPerSecond = settings.framesPerSecond,
                 )
             },
             frameLimit = totalFrames,

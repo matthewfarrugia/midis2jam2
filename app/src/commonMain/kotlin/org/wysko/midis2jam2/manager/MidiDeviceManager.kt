@@ -18,13 +18,12 @@
 package org.wysko.midis2jam2.manager
 
 import com.jme3.app.Application
-import org.wysko.midis2jam2.domain.settings.AppSettings.PlaybackSettings.MidiSpecificationResetSettings.MidiSpecification
+import org.wysko.midis2jam2.domain.settings.AppSettings.PlaybackSettings.MidiSpecificationResetSettings
 import org.wysko.midis2jam2.midi.midiSpecificationResetMessage
 import org.wysko.midis2jam2.midi.system.MidiDevice
 import org.wysko.midis2jam2.starter.configuration.Configuration
 import org.wysko.midis2jam2.starter.configuration.Configuration.AppSettingsConfiguration
 import org.wysko.midis2jam2.starter.configuration.find
-import org.wysko.midis2jam2.util.logger
 
 class MidiDeviceManager(
     private val configs: Collection<Configuration>,
@@ -32,24 +31,29 @@ class MidiDeviceManager(
 ) : BaseManager() {
     override fun initialize(app: Application) {
         super.initialize(app)
-        val isSendResetMessage = configs
-            .find<AppSettingsConfiguration>()
+        val resetSettings = configs.find<AppSettingsConfiguration>()
             .appSettings
             .playbackSettings
             .midiSpecificationResetSettings
-            .isSendSpecificationResetMessage
-        if (isSendResetMessage) {
-            sendResetMessage()
+        if (resetSettings.isSendSpecificationResetMessage) {
+            sendResetMessage(midiDevice, resetSettings)
         }
     }
 
     fun sendResetMessage() {
-        val specification = configs
-            .find<AppSettingsConfiguration>()
-            .appSettings
-            .playbackSettings
-            .midiSpecificationResetSettings
-            .midiSpecification
-        midiDevice.sendData(midiSpecificationResetMessage[specification] ?: return)
+        sendResetMessage(
+            midiDevice,
+            configs.find<AppSettingsConfiguration>()
+                .appSettings
+                .playbackSettings
+                .midiSpecificationResetSettings
+        )
+    }
+
+    companion object {
+        fun sendResetMessage(midiDevice: MidiDevice, resetSettings: MidiSpecificationResetSettings) {
+            val specification = resetSettings.midiSpecification
+            midiDevice.sendData(midiSpecificationResetMessage[specification] ?: return)
+        }
     }
 }

@@ -90,6 +90,7 @@ internal actual class Midis2jam2Application(
         stateManager.attach(MidiDeviceManager(configurations, midiDevice))
         export?.let {
             VideoExportAppState(
+                audioFile = it.audioFile,
                 settings = it.settings,
                 totalFrames = exportFrameCount(sequence, it.settings),
                 onProgress = it.onProgress,

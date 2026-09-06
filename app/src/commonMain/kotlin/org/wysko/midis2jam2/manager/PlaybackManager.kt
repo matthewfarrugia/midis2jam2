@@ -147,6 +147,7 @@ class PlaybackManager(
             get() = stateManager.getState(PlaybackManager::class.java).time
         val SimpleApplication.sequence: TimeBasedSequence
             get() = stateManager.getState(PlaybackManager::class.java).sequence
+        val introLength: Duration = INTRO
 
         fun performanceDuration(sequence: TimeBasedSequence): Duration = INTRO + sequence.duration + OUTRO
     }

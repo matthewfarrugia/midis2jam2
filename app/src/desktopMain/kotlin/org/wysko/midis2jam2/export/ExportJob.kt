@@ -22,10 +22,12 @@ import org.wysko.kmidi.midi.TimeBasedSequence
 import org.wysko.midis2jam2.manager.PlaybackManager
 import java.io.File
 import kotlin.math.ceil
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.DurationUnit
 
 internal data class ExportJob(
+    val audioFile: File,
     val settings: ExportSettings,
     val onProgress: (frame: Int, total: Int) -> Unit = { _, _ -> },
     val onComplete: (outputFile: File, frames: Int) -> Unit = { _, _ -> },
@@ -33,9 +35,13 @@ internal data class ExportJob(
 )
 
 internal fun exportFrameCount(sequence: TimeBasedSequence, settings: ExportSettings): Int {
-    val performance = PlaybackManager.performanceDuration(sequence)
-    val length = settings.maxSeconds?.seconds?.coerceAtMost(performance) ?: performance
+    val length = exportLength(sequence, settings)
     return ceil(length.toDouble(DurationUnit.SECONDS) * settings.framesPerSecond).toInt()
+}
+
+internal fun exportLength(sequence: TimeBasedSequence, settings: ExportSettings): Duration {
+    val performance = PlaybackManager.performanceDuration(sequence)
+    return settings.maxSeconds?.seconds?.coerceAtMost(performance) ?: performance
 }
 
 internal fun AppSettings.applyExportOverrides(settings: ExportSettings) {

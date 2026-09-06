@@ -48,6 +48,7 @@ internal class FfmpegSink(
     private val outputFile: File,
     private val width: Int,
     private val height: Int,
+    private val audioFile: File,
     private val framesPerSecond: Int,
     private val quality: Int = DEFAULT_QUALITY,
 ) : FrameSink {
@@ -64,10 +65,15 @@ internal class FfmpegSink(
     private val stdin: OutputStream
     private var failure: IOException? = null
 
+    private val workingDirectory = outputFile.absoluteFile.parentFile ?: File(".").absoluteFile
+
     init {
-        outputFile.absoluteFile.parentFile?.mkdirs()
+        workingDirectory.mkdirs()
+        require(audioFile.absoluteFile.parentFile == workingDirectory) {
+            "Audio file ${audioFile.absolutePath} must sit beside the output file in $workingDirectory."
+        }
         logger().debug("Encoding with ${command.joinToString(" ")}")
-        process = ProcessBuilder(command + arguments()).start()
+        process = ProcessBuilder(command + arguments()).directory(workingDirectory).start()
         stdin = process.outputStream
         drainStderr()
     }
@@ -100,12 +106,12 @@ internal class FfmpegSink(
         addAll(listOf("-hide_banner", "-loglevel", "error", "-y"))
         addAll(listOf("-f", "rawvideo", "-pix_fmt", "abgr", "-s", "${width}x$height"))
         addAll(listOf("-framerate", framesPerSecond.toString(), "-i", "-"))
-        add("-an")
+        addAll(listOf("-i", audioFile.name, "-c:a", "aac", "-b:a", "448k"))
         addAll(listOf("-c:v", "libx264", "-preset", "medium", "-crf", quality.toString()))
         addAll(listOf("-pix_fmt", "yuv420p"))
         addAll(listOf("-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709"))
         addAll(listOf("-movflags", "+faststart"))
-        add(outputFile.absolutePath)
+        add(outputFile.name)
     }
 
     private fun drainStderr() {

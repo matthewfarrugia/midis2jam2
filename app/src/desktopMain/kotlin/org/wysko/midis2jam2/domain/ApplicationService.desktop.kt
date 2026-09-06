@@ -279,6 +279,7 @@ actual class ApplicationService : KoinComponent {
             cmd += agent
             logger().warn("Renderer debug agent enabled: $agent")
         }
+        cmd += "--add-exports=java.desktop/com.sun.media.sound=ALL-UNNAMED" // needed for the GervillStream shim
         cmd += listOf("-cp", classpath, mainClass)
         cmd += encodeBundle(bundle)
 

@@ -37,6 +37,14 @@ tasks.withType<ComposeHotRun>().configureEach {
     mainClass.set("org.wysko.midis2jam2.MainKt")
 }
 
+tasks.withType<JavaCompile>().configureEach {
+    if (name.contains("Desktop")) {
+        options.compilerArgs.addAll(
+            listOf("--add-exports", "java.desktop/com.sun.media.sound=ALL-UNNAMED")
+        )
+    }
+}
+
 val appVersionName: String = "2.1.2"
 val appVersionCode: Int = 12
 

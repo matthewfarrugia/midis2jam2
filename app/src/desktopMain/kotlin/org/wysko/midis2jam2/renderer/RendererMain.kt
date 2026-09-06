@@ -29,6 +29,9 @@ import org.wysko.midis2jam2.di.uiModule
 import org.wysko.midis2jam2.export.ExportJob
 import org.wysko.midis2jam2.export.NoOpMidiDevice
 import org.wysko.midis2jam2.export.NoOpSequencer
+import org.wysko.midis2jam2.export.OfflineAudioRenderer
+import org.wysko.midis2jam2.export.exportLength
+import org.wysko.midis2jam2.manager.PlaybackManager
 import org.wysko.midis2jam2.starter.MidiPackage
 import org.wysko.midis2jam2.starter.Midis2jam2Application
 import org.wysko.midis2jam2.starter.Midis2jam2QueueApplication
@@ -72,6 +75,16 @@ private fun launchExport(
         return
     }
 
+    val nonce = String(CharArray(16) { (('A'..'Z') + ('a'..'z') + ('0'..'9')).random() })
+    val outputDirectory = File(config.export.outputFilepath).absoluteFile.parentFile ?: File(".").absoluteFile
+    outputDirectory.mkdirs()
+    val tempAudioRenderFile = File.createTempFile("audio-bounce-$nonce", ".wav", outputDirectory)
+    tempAudioRenderFile.deleteOnExit()
+
+    OfflineAudioRenderer(sequence, PlaybackManager.introLength).apply {
+        render(tempAudioRenderFile, exportLength(sequence, config.export), config.configurations)
+    }
+
     val latch = CountDownLatch(1)
     var lastProgressAt = 0L
 
@@ -87,6 +100,7 @@ private fun launchExport(
         null,
         NoOpMidiDevice(),
         ExportJob(
+            audioFile = tempAudioRenderFile,
             settings = config.export,
             onProgress = { frame, total ->
                 val now = System.currentTimeMillis()
@@ -104,8 +118,12 @@ private fun launchExport(
         ),
     )
     watchParentCommands { application.stop() }
-    application.execute()
-    latch.await()
+    try {
+        application.execute()
+        latch.await()
+    } finally {
+        tempAudioRenderFile.delete()
+    }
 }
 
 private fun launchApplication(
