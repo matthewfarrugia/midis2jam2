@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Jacob Wysko
+ * Copyright (C) 2026 Jacob Wysko
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,15 +15,21 @@
  * along with this program. If not, see https://www.gnu.org/licenses/.
  */
 
-package org.wysko.midis2jam2.renderer
+package org.wysko.midis2jam2.export
 
 import kotlinx.serialization.Serializable
-import org.wysko.midis2jam2.export.ExportSettings
-import org.wysko.midis2jam2.starter.configuration.Configuration
 
 @Serializable
-data class RendererBundle(
-    val midiFiles: List<String>,
-    val configurations: List<Configuration>,
-    val export: ExportSettings? = null,
-)
+data class ExportSettings(
+    val outputFilepath: String,
+    val width: Int = DEFAULT_WIDTH,
+    val height: Int = DEFAULT_HEIGHT,
+    val framesPerSecond: Int = DEFAULT_FRAMES_PER_SECOND,
+    val maxSeconds: Double? = null,
+) {
+    companion object {
+        const val DEFAULT_WIDTH: Int = 1920
+        const val DEFAULT_HEIGHT: Int = 1080
+        const val DEFAULT_FRAMES_PER_SECOND: Int = 30
+    }
+}

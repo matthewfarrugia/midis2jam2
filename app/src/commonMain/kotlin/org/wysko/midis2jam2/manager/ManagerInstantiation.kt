@@ -30,6 +30,7 @@ fun instantiateManagers(
     sequencer: JwSequencer,
     isQueueApplication: Boolean = false,
     onPlaybackComplete: (() -> Unit)? = null,
+    isExporting: Boolean = false,
 ): List<BaseManager> {
     val settings = configurations.find<AppSettingsConfiguration>()
     val isLooping = configurations.find<Configuration.HomeConfiguration>().isLooping
@@ -52,8 +53,9 @@ fun instantiateManagers(
             PlaybackManager(
                 sequence = sequence,
                 sequencer = sequencer,
-                isLooping = isLooping && !isQueueApplication,
+                isLooping = isLooping && !isQueueApplication && !isExporting,
                 onPlaybackComplete = onPlaybackComplete,
+                isExporting = isExporting,
             )
         )
     }

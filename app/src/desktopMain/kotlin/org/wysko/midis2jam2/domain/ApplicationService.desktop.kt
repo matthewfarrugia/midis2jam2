@@ -17,6 +17,7 @@
 
 package org.wysko.midis2jam2.domain
 
+import io.github.vinceglb.filekit.PlatformFile
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
@@ -25,6 +26,7 @@ import org.koin.core.component.inject
 import org.wysko.kmidi.midi.TimeBasedSequence.Companion.toTimeBasedSequence
 import org.wysko.kmidi.midi.reader.StandardMidiFileReader
 import org.wysko.kmidi.midi.reader.readFile
+import org.wysko.midis2jam2.export.ExportSettings
 import org.wysko.midis2jam2.renderer.RendererBundle
 import org.wysko.midis2jam2.renderer.RendererCommand
 import org.wysko.midis2jam2.renderer.RendererMessage
@@ -59,10 +61,8 @@ actual class ApplicationService : KoinComponent {
 
         when {
             isMacOs() -> {
-                val bundle = encodeBundle(
-                    RendererBundle(midiFiles = listOf(midiFile.file.absolutePath), configurations)
-                )
-                val process = launchRendererProcess(extraArgs = listOf(bundle))
+                val bundle = RendererBundle(midiFiles = listOf(midiFile.file.absolutePath), configurations)
+                val process = launchRendererProcess(bundle)
                 manageRendererProcess(process)
             }
 
@@ -95,6 +95,16 @@ actual class ApplicationService : KoinComponent {
         }
     }
 
+    fun exportVideo(midiFile: PlatformFile, export: ExportSettings) {
+        _isApplicationRunning.value = true
+        val bundle = RendererBundle(
+            midiFiles = listOf(midiFile.file.absolutePath),
+            configurations = getConfigurations(),
+            export = export,
+        )
+        manageRendererProcess(launchRendererProcess(bundle))
+    }
+
     actual fun startQueueApplication(executionState: QueueExecutionState) {
         _isApplicationRunning.value = true
         val midiFiles = executionState.queue
@@ -102,10 +112,8 @@ actual class ApplicationService : KoinComponent {
 
         when {
             isMacOs() -> {
-                val bundle = encodeBundle(
-                    RendererBundle(midiFiles = midiFiles.map { it.file.absolutePath }, configurations)
-                )
-                val process = launchRendererProcess(extraArgs = listOf(bundle))
+                val bundle = RendererBundle(midiFiles = midiFiles.map { it.file.absolutePath }, configurations)
+                val process = launchRendererProcess(bundle)
                 manageRendererProcess(process, midiFiles.map { it.file })
             }
 
@@ -187,6 +195,16 @@ actual class ApplicationService : KoinComponent {
                 _isApplicationRunning.value = false
             }
 
+            "ExportProgress" -> {
+                val frame = message.frame ?: return
+                val total = message.totalFrames ?: return
+                logger().debug("Export progress: $frame / $total frames")
+            }
+
+            "ExportComplete" -> {
+                logger().debug("Export wrote ${message.frame} frames to ${message.path}")
+            }
+
             "Finish" -> {
                 reportedResult.set(true)
                 _isApplicationRunning.value = false
@@ -250,8 +268,8 @@ actual class ApplicationService : KoinComponent {
     }
 
     private fun launchRendererProcess(
+        bundle: RendererBundle,
         mainClass: String = "org.wysko.midis2jam2.renderer.RendererMainKt",
-        extraArgs: List<String> = emptyList(),
     ): Process {
         val javaExec = detectJavaExecutable()
         val classpath = detectRendererClasspath()
@@ -262,7 +280,7 @@ actual class ApplicationService : KoinComponent {
             logger().warn("Renderer debug agent enabled: $agent")
         }
         cmd += listOf("-cp", classpath, mainClass)
-        cmd.addAll(extraArgs)
+        cmd += encodeBundle(bundle)
 
         return ProcessBuilder(cmd).start()
     }

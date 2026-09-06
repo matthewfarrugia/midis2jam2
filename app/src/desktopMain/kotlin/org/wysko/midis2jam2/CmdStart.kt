@@ -25,6 +25,7 @@ import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import org.wysko.midis2jam2.domain.ApplicationService
 import org.wysko.midis2jam2.domain.ExecutionState
+import org.wysko.midis2jam2.export.ExportSettings
 import java.io.File
 
 object CmdStart : KoinComponent {
@@ -34,7 +35,56 @@ object CmdStart : KoinComponent {
         val applicationService: ApplicationService by inject()
         val midiFile = PlatformFile(File(args.first()))
 
-        startApplicationWithFile(applicationService, midiFile)
+        when (val export = parseExportSettings(args)) {
+            null -> startApplicationWithFile(applicationService, midiFile)
+            else -> exportToVideo(applicationService, midiFile, export)
+        }
+    }
+
+    private fun parseExportSettings(args: Array<String>): ExportSettings? {
+        fun option(name: String): String? = args.indexOf(name).takeIf { it >= 0 }?.let { args.getOrNull(it + 1) }
+
+        val exportPath = option("--export") ?: return null
+        val size = option("--size")?.split('x', ignoreCase = true)
+        var width: Int
+        var height: Int
+        try {
+            check(size?.size == 2)
+            width = size[0].toInt()
+            height = size[1].toInt()
+        } catch (e: Exception) {
+            when (e) {
+                is IllegalStateException, is IllegalArgumentException -> {
+                    width = ExportSettings.DEFAULT_WIDTH
+                    height = ExportSettings.DEFAULT_HEIGHT
+                }
+
+                else -> throw e
+            }
+        }
+
+        return ExportSettings(
+            outputFilepath = exportPath,
+            width = width,
+            height = height,
+            framesPerSecond = option("--fps")?.toIntOrNull() ?: ExportSettings.DEFAULT_FRAMES_PER_SECOND,
+            maxSeconds = option("--seconds")?.toDoubleOrNull(),
+        )
+    }
+
+    private fun exportToVideo(
+        applicationService: ApplicationService,
+        midiFile: PlatformFile,
+        export: ExportSettings,
+    ) {
+        applicationService.exportVideo(midiFile, export)
+        try {
+            SplashScreen.hide()
+        } catch (_: Exception) {
+        }
+        runBlocking {
+            applicationService.isApplicationRunning.first { !it }
+        }
     }
 
     /**

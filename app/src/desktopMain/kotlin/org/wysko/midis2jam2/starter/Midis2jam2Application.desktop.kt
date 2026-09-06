@@ -27,6 +27,10 @@ import org.wysko.kmidi.midi.TimeBasedSequence
 import org.wysko.midis2jam2.DesktopPerformanceManager
 import org.wysko.midis2jam2.domain.ErrorLogService
 import org.wysko.midis2jam2.domain.Jme3ExceptionHandler
+import org.wysko.midis2jam2.export.ExportJob
+import org.wysko.midis2jam2.export.VideoExportAppState
+import org.wysko.midis2jam2.export.applyExportOverrides
+import org.wysko.midis2jam2.export.exportFrameCount
 import org.wysko.midis2jam2.manager.MidiDeviceManager
 import org.wysko.midis2jam2.manager.camera.CameraManager
 import org.wysko.midis2jam2.manager.camera.DesktopCameraManager
@@ -45,12 +49,14 @@ internal actual class Midis2jam2Application(
     private val sequencer: JwSequencer,
     private val synthesizer: Synthesizer?,
     private val midiDevice: MidiDevice,
+    private val export: ExportJob? = null,
 ) : SimpleApplication() {
     private val errorLogService = KoinPlatformTools.defaultContext().get().get<ErrorLogService>()
 
     actual fun execute() {
         try {
             applyConfigurations(configurations)
+            export?.let { settings.applyExportOverrides(it.settings) }
             start()
         } catch (e: Exception) {
             e.printStackTrace()
@@ -80,8 +86,17 @@ internal actual class Midis2jam2Application(
         )
         stateManager.attach(performanceAppState)
         rootNode.attachChild(performanceAppState.root)
-        addManagers(configurations, sequence, sequencer)
+        addManagers(configurations, sequence, sequencer, isExporting = export != null)
         stateManager.attach(MidiDeviceManager(configurations, midiDevice))
+        export?.let {
+            VideoExportAppState(
+                settings = it.settings,
+                totalFrames = exportFrameCount(sequence, it.settings),
+                onProgress = it.onProgress,
+                onComplete = it.onComplete,
+                onError = it.onError,
+            ).attachTo(this)
+        }
     }
 
     actual override fun stop() {

@@ -26,6 +26,9 @@ import org.wysko.midis2jam2.di.applicationModule
 import org.wysko.midis2jam2.di.midiSystemModule
 import org.wysko.midis2jam2.di.systemModule
 import org.wysko.midis2jam2.di.uiModule
+import org.wysko.midis2jam2.export.ExportJob
+import org.wysko.midis2jam2.export.NoOpMidiDevice
+import org.wysko.midis2jam2.export.NoOpSequencer
 import org.wysko.midis2jam2.starter.MidiPackage
 import org.wysko.midis2jam2.starter.Midis2jam2Application
 import org.wysko.midis2jam2.starter.Midis2jam2QueueApplication
@@ -36,6 +39,8 @@ import java.util.*
 import java.util.concurrent.CountDownLatch
 import kotlin.system.exitProcess
 
+private const val PROGRESS_INTERVAL_MS = 250L
+
 fun main(args: Array<String>) {
     val protocol = System.out.bufferedWriter()
     installFatalErrorReporter(protocol)
@@ -45,11 +50,62 @@ fun main(args: Array<String>) {
     val config = Json.decodeFromString<RendererBundle>(arguments)
     val midiFiles = config.midiFiles.map { File(it) }
 
-    when (midiFiles.size) {
-        0 -> reportNoFiles(protocol)
-        1 -> launchApplication(midiFiles, config, protocol)
+    when {
+        midiFiles.isEmpty() -> reportNoFiles(protocol)
+        config.export != null -> launchExport(midiFiles.first(), config, protocol)
+        midiFiles.size == 1 -> launchApplication(midiFiles, config, protocol)
         else -> launchQueueApplication(midiFiles, config, protocol)
     }
+}
+
+private fun launchExport(
+    midiFile: File,
+    config: RendererBundle,
+    protocol: BufferedWriter,
+) {
+    check(config.export != null)
+    check(config.midiFiles.size == 1, { "Export takes one file at a time; ${config.midiFiles.size} file(s) given" })
+
+    val sequence = runCatching { StandardMidiFileReader().readFile(midiFile).toTimeBasedSequence() }.getOrElse { t ->
+        t.printStackTrace()
+        protocol.send(RendererMessage.error("The MIDI file could not be read.", t.stackTraceToString()))
+        return
+    }
+
+    val latch = CountDownLatch(1)
+    var lastProgressAt = 0L
+
+    val application = Midis2jam2Application(
+        sequence,
+        midiFile.name,
+        config.configurations,
+        {
+            latch.countDown()
+            protocol.send(RendererMessage.finish())
+        },
+        NoOpSequencer().apply { this.sequence = sequence },
+        null,
+        NoOpMidiDevice(),
+        ExportJob(
+            settings = config.export,
+            onProgress = { frame, total ->
+                val now = System.currentTimeMillis()
+                if (now - lastProgressAt >= PROGRESS_INTERVAL_MS || frame >= total) {
+                    lastProgressAt = now
+                    protocol.send(RendererMessage.exportProgress(frame, total))
+                }
+            },
+            onComplete = { outputFile, frames ->
+                protocol.send(RendererMessage.exportComplete(outputFile.absolutePath, frames))
+            },
+            onError = { cause ->
+                protocol.send(RendererMessage.error("The video export failed.", cause.stackTraceToString()))
+            },
+        ),
+    )
+    watchParentCommands { application.stop() }
+    application.execute()
+    latch.await()
 }
 
 private fun launchApplication(

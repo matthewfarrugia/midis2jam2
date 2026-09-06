@@ -53,6 +53,7 @@ internal fun SimpleApplication.addManagers(
     sequencer: JwSequencer,
     isQueueApplication: Boolean = false,
     onPlaybackComplete: (() -> Unit)? = null,
+    isExporting: Boolean = false,
 ) {
     val managers = instantiateManagers(
         configurations = configurations,
@@ -60,6 +61,7 @@ internal fun SimpleApplication.addManagers(
         sequencer = sequencer,
         isQueueApplication = isQueueApplication,
         onPlaybackComplete = onPlaybackComplete,
+        isExporting = isExporting,
     )
     stateManager.attachAll(*managers.toTypedArray())
 }

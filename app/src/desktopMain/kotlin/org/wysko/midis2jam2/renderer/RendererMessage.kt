@@ -25,10 +25,18 @@ data class RendererMessage(
     val message: String? = null,
     val stackTrace: String? = null,
     val trackIndex: Int? = null,
+    val frame: Int? = null,
+    val totalFrames: Int? = null,
+    val path: String? = null,
 ) {
     companion object {
         fun finish() = RendererMessage("Finish")
         fun error(message: String, stackTrace: String) = RendererMessage("Error", message, stackTrace)
         fun queueTrackStart(trackIndex: Int) = RendererMessage("QueueTrackStart", trackIndex = trackIndex)
+        fun exportProgress(frame: Int, totalFrames: Int) =
+            RendererMessage("ExportProgress", frame = frame, totalFrames = totalFrames)
+
+        fun exportComplete(path: String, frames: Int) =
+            RendererMessage("ExportComplete", path = path, frame = frames)
     }
 }

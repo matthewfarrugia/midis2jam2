@@ -41,6 +41,7 @@ class PlaybackManager(
     private val sequencer: JwSequencer,
     private val isLooping: Boolean,
     private val onPlaybackComplete: (() -> Unit)? = null,
+    private val isExporting: Boolean = false,
 ) : BaseManager(), ActionListener {
     val duration: Duration = sequence.duration
     var time: Duration = -INTRO
@@ -52,13 +53,14 @@ class PlaybackManager(
 
     override fun initialize(app: Application) {
         super.initialize(app)
+        if (isExporting) return
         app.inputManager.addListener(
             this, ACTION_PLAY, ACTION_SEEK_FORWARD, ACTION_SEEK_BACKWARD, ACTION_RESTART
         )
     }
 
     override fun update(tpf: Float) {
-        if (skippedFrames++ < 3) return
+        if (!isExporting && skippedFrames++ < 3) return // TODO: check the reasoning for skipping frames here
 
         if (!isSequencerStarted && time > ZERO && isPlaying) {
             sequencer.start()
@@ -145,6 +147,8 @@ class PlaybackManager(
             get() = stateManager.getState(PlaybackManager::class.java).time
         val SimpleApplication.sequence: TimeBasedSequence
             get() = stateManager.getState(PlaybackManager::class.java).sequence
+
+        fun performanceDuration(sequence: TimeBasedSequence): Duration = INTRO + sequence.duration + OUTRO
     }
 
     enum class SeekDirection {
