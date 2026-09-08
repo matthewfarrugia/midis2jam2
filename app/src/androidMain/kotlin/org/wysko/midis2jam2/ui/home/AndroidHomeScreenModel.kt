@@ -25,6 +25,7 @@ import io.github.vinceglb.filekit.dialogs.compose.rememberFilePickerLauncher
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitMode
 import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.SaverResultLauncher
 import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,6 +64,9 @@ class AndroidHomeScreenModel(
     override val isLooping: StateFlow<Boolean>
         get() = MutableStateFlow(false)
 
+    override val isRecording: StateFlow<Boolean>
+        get() = error("Not supported on Android")
+
     override val isPlayButtonEnabled: Flow<Boolean>
         get() = flowOf(true)
 
@@ -100,6 +104,13 @@ class AndroidHomeScreenModel(
         error("Not supported on Android")
     }
 
+    override fun setRecording(recording: Boolean) {
+        error("Not supported on Android")
+    }
+
+    override val selectedOutputFile: StateFlow<PlatformFile?>
+        get() = error("Not supported on Android")
+
     override fun getMidiDevices(): List<MidiDevice> {
         return midiService.getMidiDevices()
     }
@@ -115,6 +126,11 @@ class AndroidHomeScreenModel(
                 onFileSelected?.invoke(it)
             }
         }
+    }
+
+    @Composable
+    override fun outputFilePicker(onFileSelected: ((PlatformFile) -> Unit)?): SaverResultLauncher {
+        error("Not supported on Android")
     }
 
     override fun loadState() {

@@ -70,13 +70,17 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.name
+import io.github.vinceglb.filekit.nameWithoutExtension
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import midis2jam2.app.generated.resources.Res
 import midis2jam2.app.generated.resources.midi_device
 import midis2jam2.app.generated.resources.midi_file
+import midis2jam2.app.generated.resources.output_file
 import midis2jam2.app.generated.resources.play
+import midis2jam2.app.generated.resources.play_and_record
 import midis2jam2.app.generated.resources.play_arrow
+import midis2jam2.app.generated.resources.record
 import midis2jam2.app.generated.resources.repeat
 import midis2jam2.app.generated.resources.repeat_on
 import midis2jam2.app.generated.resources.soundbank
@@ -93,6 +97,7 @@ import org.wysko.midis2jam2.ui.common.navigation.NavigationModel
 import org.wysko.midis2jam2.ui.history.HistoryScreenButton
 import org.wysko.midis2jam2.ui.home.log.LogScreenButton
 import org.wysko.midis2jam2.util.FileDragAndDrop
+import org.wysko.midis2jam2.util.isMacOs
 import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
@@ -114,6 +119,8 @@ internal actual fun HomeScreenLayout() {
     val selectedMidiDevice = model.selectedMidiDevice.collectAsState()
     val selectedSoundbank = model.selectedSoundbank.collectAsState()
     val isLooping = model.isLooping.collectAsState()
+    val isRecording = model.isRecording.collectAsState()
+    val selectedOutputFile = model.selectedOutputFile.collectAsState()
 
     LaunchedEffect(
         selectedMidiDevice.value,
@@ -196,6 +203,9 @@ internal actual fun HomeScreenLayout() {
                     SoundbankSelector(model, isSoundbankSelectVisible)
                 }
                 item {
+                    VideoOutputFilePicker(model)
+                }
+                item {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -210,6 +220,7 @@ internal actual fun HomeScreenLayout() {
                             }
                         }
                         LoopButton(model)
+                        RecordButton(model)
                     }
                 }
             }
@@ -317,34 +328,86 @@ internal fun MidiFilePicker(
 }
 
 @Composable
+internal fun VideoOutputFilePicker(
+    model: HomeScreenModel
+) {
+    val isRecording = model.isRecording.collectAsState()
+    when {
+        isMacOs() && isRecording.value -> {
+            val selectedMidiFile = model.selectedMidiFile.collectAsState()
+            val selectedOutputFile = model.selectedOutputFile.collectAsState()
+            val outputFilePicker = model.outputFilePicker(null)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+            ) {
+                OutputFileSelected(
+                    selectedOutputFile = selectedOutputFile.value?.name ?: "",
+                ) {
+                    outputFilePicker.launch(
+                        suggestedName = selectedMidiFile.value?.nameWithoutExtension ?: "performance",
+                        defaultExtension = "mp4",
+                        allowedExtensions = setOf("mp4")
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun PlayButton(
     model: HomeScreenModel,
     onClick: () -> Unit,
 ) {
     val isEnabled = model.isPlayButtonEnabled.collectAsState(false)
+    val isRecording = model.isRecording.collectAsState()
     Button(
         onClick = onClick,
         modifier = Modifier.width(192.dp).height(56.dp),
         enabled = isEnabled.value,
     ) {
+        val buttonText = when {
+            isRecording.value -> stringResource(Res.string.play_and_record)
+            else -> stringResource(Res.string.play)
+        }
         Icon(painterResource(Res.drawable.play_arrow), "", modifier = Modifier.size(24.dp))
         Spacer(Modifier.width(8.dp))
-        Text(stringResource(Res.string.play), fontSize = 16.sp)
+        Text(buttonText, fontSize = 16.sp)
     }
 }
 
 @Composable
 fun LoopButton(model: HomeScreenModel) {
     val isLooping = model.isLooping.collectAsState()
+    val isRecording = model.isRecording.collectAsState()
     IconToggleButton(
         checked = isLooping.value,
-        onCheckedChange = { model.setLooping(it) }
+        onCheckedChange = { model.setLooping(it) },
+        enabled = !isRecording.value
     ) {
         val drawable = when (isLooping.value) {
             true -> Res.drawable.repeat_on
             false -> Res.drawable.repeat
         }
         Icon(painterResource(drawable), null)
+    }
+}
+
+@Composable
+fun RecordButton(model: HomeScreenModel) {
+    when {
+        isMacOs() -> {
+            val isRecording = model.isRecording.collectAsState()
+            val isLooping = model.isLooping.collectAsState()
+            IconToggleButton(
+                checked = isRecording.value,
+                onCheckedChange = { model.setRecording(it) },
+                enabled = !isLooping.value
+            ) {
+                Icon(painterResource(Res.drawable.record), null)
+            }
+        }
     }
 }
 
@@ -428,6 +491,32 @@ internal fun MidiFileSelector(
             visualTransformation = VisualTransformation.None,
             interactionSource = interactionSource,
             label = { Text(stringResource(Res.string.midi_file)) },
+        )
+    }
+}
+
+@Composable
+internal fun OutputFileSelected(
+    selectedOutputFile: String? = null,
+    modifier: Modifier = Modifier,
+    onOpenOutputFilePicker: () -> Unit = {},
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
+        modifier = Modifier.clickable {
+            onOpenOutputFilePicker()
+        }.then(modifier)
+    ) {
+        TextFieldDefaults.DecorationBox(
+            selectedOutputFile ?: "",
+            innerTextField = {
+                Text(selectedOutputFile ?: "", Modifier.fillMaxWidth())
+            },
+            enabled = true,
+            singleLine = true,
+            visualTransformation = VisualTransformation.None,
+            interactionSource = interactionSource,
+            label = { Text(stringResource(Res.string.output_file)) },
         )
     }
 }

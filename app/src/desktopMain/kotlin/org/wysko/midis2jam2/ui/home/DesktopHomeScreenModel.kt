@@ -24,6 +24,8 @@ import io.github.vinceglb.filekit.PlatformFile
 import io.github.vinceglb.filekit.dialogs.FileKitDialogSettings
 import io.github.vinceglb.filekit.dialogs.FileKitMode
 import io.github.vinceglb.filekit.dialogs.FileKitType
+import io.github.vinceglb.filekit.dialogs.compose.SaverResultLauncher
+import io.github.vinceglb.filekit.dialogs.compose.rememberFileSaverLauncher
 import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -66,9 +68,21 @@ class DesktopHomeScreenModel(
     override val isLooping: StateFlow<Boolean>
         get() = _isLooping
 
+    private val _isRecording = MutableStateFlow(false)
+    override val isRecording: StateFlow<Boolean>
+        get() = _isRecording
+
+    private val _selectedOutputFile = MutableStateFlow<PlatformFile?>(null)
+    override val selectedOutputFile: StateFlow<PlatformFile?>
+        get() = _selectedOutputFile
+
     override val isPlayButtonEnabled: Flow<Boolean>
-        get() = _selectedMidiFile.combine(applicationService.isApplicationRunning) { midiFile, isRunning ->
-            !isRunning && midiFile != null
+        get() = combine(
+            _selectedMidiFile,
+            _isRecording,
+            _selectedOutputFile,
+            applicationService.isApplicationRunning) { midiFile, isRecording, selectedOutputFile, isRunning ->
+            !isRunning && midiFile != null && (!isRecording || selectedOutputFile != null)
         }
 
     override val soundbanks: Flow<List<PlatformFile>> = run {
@@ -91,7 +105,8 @@ class DesktopHomeScreenModel(
         @Suppress("ReplaceNotNullAssertionWithElvisReturn")
         applicationService.startApplication(
             ExecutionState(
-                midiFile = selectedMidiFile.value!!
+                midiFile = selectedMidiFile.value!!,
+                exportOutputFile = selectedOutputFile.value
             )
         )
     }
@@ -112,6 +127,11 @@ class DesktopHomeScreenModel(
         _isLooping.value = looping
     }
 
+    override fun setRecording(recording: Boolean) {
+        _isRecording.value = recording
+        _selectedOutputFile.value = null
+    }
+
     override fun getMidiDevices(): List<MidiDevice> = midiService.getMidiDevices()
 
     @Composable
@@ -130,6 +150,26 @@ class DesktopHomeScreenModel(
                 onFileSelected?.invoke(it)
             }
         }
+    }
+
+    @Composable
+    override fun outputFilePicker(
+        onFileSelected: ((PlatformFile) -> Unit)?,
+    ): SaverResultLauncher {
+        return rememberFileSaverLauncher(
+            dialogSettings = FileKitDialogSettings.createDefault(),
+            onResult = { file ->
+                when (file) {
+                    null -> return@rememberFileSaverLauncher
+                    else -> {
+                        _selectedOutputFile.value = file
+                        file.let {
+                            onFileSelected?.invoke(it)
+                        }
+                    }
+                }
+            },
+        )
     }
 
     override fun loadState() {

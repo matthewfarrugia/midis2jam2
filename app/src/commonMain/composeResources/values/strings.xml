@@ -12,10 +12,12 @@
     <string name="warning">Warning</string>
     <string name="back">Back</string>
     <string name="play">Play</string>
+    <string name="play_and_record">Play &amp; Record</string>
     <string name="enabled">Enabled</string>
     <string name="disabled">Disabled</string>
     <string name="midi_file">MIDI file</string>
     <string name="midi_device">MIDI device</string>
+    <string name="output_file">Output file</string>
     <string name="soundbank">Soundbank</string>
     <string name="soundbank_default">Default soundbank</string>
     <string name="soundbank_selector_title">Select soundbank</string>

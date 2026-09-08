@@ -20,6 +20,7 @@ package org.wysko.midis2jam2.domain
 import androidx.compose.runtime.Composable
 import io.github.vinceglb.filekit.dialogs.compose.PickerResultLauncher
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.dialogs.compose.SaverResultLauncher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import org.wysko.midis2jam2.midi.system.MidiDevice
@@ -29,6 +30,8 @@ interface HomeScreenModel {
     val selectedMidiDevice: StateFlow<MidiDevice>
     val selectedSoundbank: StateFlow<PlatformFile?>
     val isLooping: StateFlow<Boolean>
+    val isRecording: StateFlow<Boolean>
+    val selectedOutputFile: StateFlow<PlatformFile?>
     val isPlayButtonEnabled: Flow<Boolean>
     val soundbanks: Flow<List<PlatformFile>>
     val backgroundWarning: Flow<BackgroundWarning?>
@@ -39,11 +42,14 @@ interface HomeScreenModel {
     fun setMidiDevice(midiDevice: MidiDevice)
     fun setSelectedSoundbank(soundbank: PlatformFile?)
     fun setLooping(looping: Boolean)
+    fun setRecording(recording: Boolean)
 
     fun getMidiDevices(): List<MidiDevice>
 
     @Composable
     fun midiFilePicker(onFileSelected: ((PlatformFile) -> Unit)?): PickerResultLauncher
+    @Composable
+    fun outputFilePicker(onFileSelected: ((PlatformFile) -> Unit)?): SaverResultLauncher
 
     fun loadState()
     fun saveState()

@@ -45,7 +45,7 @@ class OfflineAudioRenderer(
     fun render(outputFile: File, length: Duration, configurations: Collection<Configuration>) {
         val midiDevice = GervillMidiDevice.instance
 
-        val (_, _, selectedSoundbank, _) = configurations.find<HomeConfiguration>()
+        val (_, _, selectedSoundbank, _, _, _) = configurations.find<HomeConfiguration>()
         val synth = midiDevice.synthesizer.apply {
             selectedSoundbank?.let {
                 val soundbank = MidiSystem.getSoundbank(File(it))

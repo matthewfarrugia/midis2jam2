@@ -28,6 +28,7 @@ expect class ApplicationService() {
 
 data class ExecutionState(
     val midiFile: PlatformFile,
+    val exportOutputFile: PlatformFile? = null
 )
 
 data class QueueExecutionState(

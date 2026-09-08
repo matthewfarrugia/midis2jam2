@@ -35,6 +35,8 @@ sealed class Configuration {
         val selectedMidiDevice: String = "Gervill",
         val selectedSoundbank: String? = null,
         val isLooping: Boolean = false,
+        val isRecording: Boolean = false,
+        val selectedOutputFile: String? = null,
     ) : Configuration()
 
     @Serializable

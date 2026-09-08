@@ -18,6 +18,7 @@
 package org.wysko.midis2jam2.domain
 
 import io.github.vinceglb.filekit.PlatformFile
+import io.github.vinceglb.filekit.absolutePath
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.json.Json
@@ -58,10 +59,16 @@ actual class ApplicationService : KoinComponent {
         _isApplicationRunning.value = true
         val configurations = getConfigurations()
         val midiFile = executionState.midiFile
+        val exportOutputFile = executionState.exportOutputFile
 
         when {
             isMacOs() -> {
-                val bundle = RendererBundle(midiFiles = listOf(midiFile.file.absolutePath), configurations)
+                val bundle = RendererBundle(
+                    midiFiles = listOf(midiFile.file.absolutePath),
+                    configurations,
+                    exportOutputFile?.let {
+                        ExportSettings(outputFilepath = it.absolutePath())
+                    })
                 val process = launchRendererProcess(bundle)
                 manageRendererProcess(process)
             }
