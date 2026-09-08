@@ -17,24 +17,14 @@
 
 package org.wysko.midis2jam2.export
 
-import com.jme3.util.Screenshots
 import org.wysko.midis2jam2.util.logger
-import java.awt.image.BufferedImage
-import java.awt.image.DataBufferByte
 import java.io.File
 import java.io.IOException
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
-import javax.imageio.IIOImage
-import javax.imageio.ImageIO
-import javax.imageio.ImageTypeSpecifier
-import javax.imageio.metadata.IIOMetadataNode
-import javax.imageio.stream.FileImageOutputStream
 
 private const val BYTES_PER_PIXEL = 4
-private const val OPAQUE: Byte = -1
-private const val PNG_METADATA_FORMAT = "javax_imageio_png_1.0"
 private const val DEFAULT_QUALITY = 18
 private const val EXIT_GRACE_SECONDS = 30L
 private const val STDERR_TAIL_LINES = 20
@@ -52,8 +42,8 @@ internal class FfmpegSink(
     private val framesPerSecond: Int,
     private val quality: Int = DEFAULT_QUALITY,
 ) : FrameSink {
-    private val output = BufferedImage(width, height, BufferedImage.TYPE_4BYTE_ABGR)
-    private val outputPixels = (output.raster.dataBuffer as DataBufferByte).data
+    private val frameBytes = ByteArray(width * height * BYTES_PER_PIXEL)
+    private val rowBytes = width * BYTES_PER_PIXEL
 
     private val stderrTail = ArrayDeque<String>()
     private val command = FfmpegLocator.locate(outputFile)
@@ -80,9 +70,14 @@ internal class FfmpegSink(
 
     override fun write(frameIndex: Int, bgra: ByteBuffer) {
         failure?.let { throw it }
-        Screenshots.convertScreenShot(bgra, output)
+        bgra.rewind()
+        // glReadPixels returns rows bottom-up; flip for ffmpeg
+        for (row in 0 until height) {
+            bgra.position((height - 1 - row) * rowBytes)
+            bgra.get(frameBytes, row * rowBytes, rowBytes)
+        }
         try {
-            stdin.write(outputPixels)
+            stdin.write(frameBytes)
         } catch (e: IOException) {
             throw IOException("ffmpeg stopped after $frameIndex frames.${stderrReport()}", e).also { failure = it }
         }
@@ -104,7 +99,7 @@ internal class FfmpegSink(
 
     private fun arguments(): List<String> = buildList {
         addAll(listOf("-hide_banner", "-loglevel", "error", "-y"))
-        addAll(listOf("-f", "rawvideo", "-pix_fmt", "abgr", "-s", "${width}x$height"))
+        addAll(listOf("-f", "rawvideo", "-pix_fmt", "bgra", "-s", "${width}x$height"))
         addAll(listOf("-framerate", framesPerSecond.toString(), "-i", "-"))
         addAll(listOf("-i", audioFile.name, "-c:a", "aac", "-b:a", "448k"))
         addAll(listOf("-c:v", "libx264", "-preset", "medium", "-crf", quality.toString()))
